@@ -48,7 +48,7 @@
 
 1. **Cloudflare Pages 项目** `record-mockup`：生产分支设为 `main`。
 2. **Analytics Engine**：在 Cloudflare 后台 Workers & Pages → Analytics Engine 里启用（免费额度够用）。数据集在第一次写入时自动创建，绑定写在 `wrangler.toml` 里。
-3. **自定义域名**：`recordmockup.com` 和 `www.recordmockup.com` 已加到 Pages 项目。域名在 Spaceship 注册，nameserver 指向 Cloudflare（`louis` / `miki.ns.cloudflare.com`），DNS 记录在 Cloudflare 管理，两个名字都 CNAME 到 `record-mockup.pages.dev`。
+3. **自定义域名**：`recordmockup.com` 和 `www.recordmockup.com` 已加到 Pages 项目。域名在 Spaceship 注册，nameserver 指向 Cloudflare（`louis` / `miki.ns.cloudflare.com`），DNS 记录在 Cloudflare 管理，两个名字都 CNAME 到 `record-mockup.pages.dev`。`www` 由 `functions/_middleware.js` 301 跳转到根域名，路径和参数保留。
 4. **Web Analytics**：后台 Web Analytics → Add a site → 填 `recordmockup.com`，选手动安装（JS snippet），把其中的 token 填到 GitHub 仓库变量 `CF_WEB_ANALYTICS_TOKEN`（Settings → Secrets and variables → Actions → Variables）。
 5. GitHub 仓库 secrets `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID` 预览部署已经在用，不用再加。
 
@@ -92,7 +92,7 @@ gql "{ viewer { zones(filter:{zoneTag:\"$CF_ZONE_ID\"}) {
     dimensions { date } sum { requests pageViews } uniq { uniques } } } } }"
 ```
 
-`date -v-7d` 是 macOS 写法，Linux 用 `date -d '7 days ago' +%F`。Web Analytics 的维度还有 `requestPath`、`countryName`、`userAgentBrowser`、`deviceType`、`refererHost`，加到 `dimensions` 里就能分组。`www` 现在不跳转到根域名，所以 PV 会分在两个主机上，合起来看。Web Analytics 没法排除伪装成浏览器的机器人（它们会被算成 MobileSafari 之类），真人用量以 `/api/log` 里 `double13 = 0` 的 `ready` 为准：
+`date -v-7d` 是 macOS 写法，Linux 用 `date -d '7 days ago' +%F`。Web Analytics 的维度还有 `requestPath`、`countryName`、`userAgentBrowser`、`deviceType`、`refererHost`，加到 `dimensions` 里就能分组。`www` 现在 301 跳转到根域名，新数据只会落在 `recordmockup.com` 上；查询里保留 `www` 是为了算上跳转之前的数据。Web Analytics 没法排除伪装成浏览器的机器人（它们会被算成 MobileSafari 之类），真人用量以 `/api/log` 里 `double13 = 0` 的 `ready` 为准：
 
 ```sql
 SELECT toDate(timestamp) AS day, count() AS opens, count(DISTINCT blob12) AS sessions FROM record_mockup_logs
